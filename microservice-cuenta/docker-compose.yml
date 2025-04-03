@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  cliente-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: cliente_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - cliente-db-data:/var/lib/postgresql/data
+
+  cuenta-db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: cuenta_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5433:5432" # Usamos 5433 para evitar conflicto con cliente-db
+    volumes:
+      - cuenta-db-data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  microservice-cliente:
+    build:
+      context: ./microservice-cliente
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://cliente-db:5432/cliente_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: admin
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    depends_on:
+      - cliente-db
+      - rabbitmq
+
+  microservice-cuenta:
+    build:
+      context: ./microservice-cuenta
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://cuenta-db:5432/cuenta_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: admin
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+    depends_on:
+      - cuenta-db
+      - rabbitmq
+
+volumes:
+  cliente-db-data:
+  cuenta-db-data:
